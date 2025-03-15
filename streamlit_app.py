@@ -41,7 +41,7 @@ file_type = st.sidebar.radio("Select File Type", ["PDF", "Image"])
 source_type = st.sidebar.radio("Choose Input Source", ["URL", "Local Upload"])
 
 # ---- Main Header ----
-st.markdown("<h1 class='main big-font'>📄 Mistral OCR & Translation Tool</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main big-font'>📄 Gir Reader 🦁 </h1>", unsafe_allow_html=True)
 
 # ---- OCR Input Handling ----
 if source_type == "URL":
