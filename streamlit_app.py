@@ -11,7 +11,7 @@ st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 # ---- Custom Styles (Ancient Yellow Background) ----
 st.markdown("""
     <style>
-    .stApp { background-color: #ffd000; } /* Ancient Yellow */
+    .stApp { background-color: #f7b267; } /* Ancient Yellow */
     .main { text-align: center; }
     .big-font { font-size:20px !important; font-weight: bold; }
     .success-box { border: 2px solid green; padding: 10px; background-color: #e6ffe6; border-radius: 5px; }
