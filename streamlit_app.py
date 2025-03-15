@@ -6,12 +6,12 @@ import streamlit as st
 from mistralai import Mistral
 
 # ---- Web App Configuration ----
-st.set_page_config(page_title="Mistral OCR & Translation Tool", page_icon="📄", layout="centered")
+st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
 # ---- Custom Styles (Ancient Yellow Background) ----
 st.markdown("""
     <style>
-    .stApp { background-color: #FAE6A2; } /* Ancient Yellow */
+    .stApp { background-color: #EAD29A; } /* Ancient Yellow */
     .main { text-align: center; }
     .big-font { font-size:20px !important; font-weight: bold; }
     .success-box { border: 2px solid green; padding: 10px; background-color: #e6ffe6; border-radius: 5px; }
