@@ -11,14 +11,14 @@ st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 # ---- Modern Minimalist UI ----
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=FK+Grotesk:wght@400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
     
     * {
-        font-family: 'FK Grotesk', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
     
     .stApp {
-        background: #f4f4f4;
+        background: #f9f9f9;
         color: #333;
         padding: 20px;
     }
@@ -61,7 +61,7 @@ st.markdown("""
     }
     
     pre {
-        background: #eee;
+        background: #f0f0f0;
         padding: 10px;
         border-radius: 8px;
         font-size: 14px;
@@ -88,7 +88,7 @@ if "client" not in st.session_state and api_key:
 # ---- File Upload ----
 st.markdown("<div class='card'>📁 <b>Upload File</b></div>", unsafe_allow_html=True)
 file_type = st.radio("Select File Type", ["PDF", "Image"], horizontal=True)
-source_type = st.radio("Choose Input Source", ["URL", "Local Upload"], horizontal=True)
+source_type = st.radio("Choose Input Source", ["Local Upload", "URL"], horizontal=True)
 if source_type == "URL":
     input_url = st.text_input("Enter File URL")
     uploaded_file = None
