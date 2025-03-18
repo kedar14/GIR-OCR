@@ -88,9 +88,13 @@ if "client" not in st.session_state and api_key:
 # ---- File Upload ----
 st.markdown("<div class='card'>📁 <b>Upload File</b></div>", unsafe_allow_html=True)
 file_type = st.radio("Select File Type", ["PDF", "Image"], horizontal=True)
-source_type = st.radio("Choose Input Source", ["Local Upload", "URL"], horizontal=True)
+source_type = st.radio("Choose Input Source", ["Local Upload", "URL", "Clipboard"], horizontal=True)
 if source_type == "URL":
     input_url = st.text_input("Enter File URL")
+    uploaded_file = None
+elif source_type == "Clipboard":
+    input_url = None
+    clipboard_data = st.text_area("Paste image data (Base64) or text from clipboard")
     uploaded_file = None
 else:
     input_url = None
