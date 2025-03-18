@@ -95,12 +95,6 @@ if source_type == "URL":
 elif source_type == "Clipboard":
     input_url = None
     clipboard_data = st.text_area("Paste image or text from clipboard")
-    if clipboard_data:
-        try:
-            clipboard_bytes = base64.b64decode(clipboard_data)
-            uploaded_file = BytesIO(clipboard_bytes)
-        except Exception:
-            uploaded_file = None
     uploaded_file = None
 else:
     input_url = None
@@ -117,25 +111,10 @@ if st.button("🚀 Process Document"):
     else:
         try:
             client = st.session_state["client"]
-            if source_type == "URL":
-                document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {"type": "image_url", "image_url": input_url}
-            else:
-                file_bytes = uploaded_file.read()
-                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
-                if file_type == "PDF":
-                    document = {"type": "document_url", "document_url": f"data:application/pdf;base64,{encoded_file}"}
-                else:
-                    img = PILImage.open(BytesIO(file_bytes))
-                    format = img.format.lower()
-                    if format not in ["jpeg", "png", "bmp", "gif"]:
-                        st.markdown("<div class='card'>❌ Unsupported image format.</div>", unsafe_allow_html=True)
-                        st.stop()
-                    mime_type = f"image/{format}"
-                    document = {"type": "image_url", "image_url": f"data:{mime_type};base64,{encoded_file}"}
             with st.spinner("🔍 Processing document..."):
                 ocr_response = client.ocr.process(
                     model="mistral-ocr-latest",
-                    document=document,
+                    document={"type": "document_url", "document_url": input_url} if source_type == "URL" else uploaded_file,
                     include_image_base64=True,
                 )
                 pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
@@ -144,3 +123,37 @@ if st.button("🚀 Process Document"):
             st.markdown(f"<div class='card'><h3>📃 OCR Result:</h3><pre>{ocr_result}</pre></div>", unsafe_allow_html=True)
         except Exception as e:
             st.markdown(f"<div class='card'>❌ Error: {str(e)}</div>", unsafe_allow_html=True)
+
+# ---- Post-Processing Options ----
+if "ocr_result" in st.session_state:
+    st.markdown("<div class='card'>🛠 <b>Post-Processing Options</b></div>", unsafe_allow_html=True)
+    if st.button("🔧 Refine Text"):
+        client = st.session_state["client"]
+        response = client.chat.complete(
+            model="mistral-large-latest",
+            messages=[{"role": "user", "content": f"Improve the structure and readability of this text:
+
+{st.session_state['ocr_result']}"}]
+        )
+        refined_text = response.choices[0].message.content  # Example refinement
+        st.markdown(f"<div class='card'><h3>📑 Refined Text:</h3><pre>{refined_text}</pre></div>", unsafe_allow_html=True)
+    if st.button("🌎 Translate to English"):
+        client = st.session_state["client"]
+        response = client.chat.complete(
+            model="mistral-large-latest",
+            messages=[{"role": "user", "content": f"Translate this text to English:
+
+{st.session_state['ocr_result']}"}]
+        )
+        translated_text = response.choices[0].message.content  # Placeholder for translation logic
+        st.markdown(f"<div class='card'><h3>🌍 Translated Text:</h3><pre>{translated_text}</pre></div>", unsafe_allow_html=True)
+    if st.button("⚡ Summarize"):
+        client = st.session_state["client"]
+        response = client.chat.complete(
+            model="mistral-large-latest",
+            messages=[{"role": "user", "content": f"Summarize this text into key points:
+
+{st.session_state['ocr_result']}"}]
+        )
+        summary_text = response.choices[0].message.content  # Placeholder for summarization logic
+        st.markdown(f"<div class='card'><h3>📌 Summary:</h3><pre>{summary_text}</pre></div>", unsafe_allow_html=True)
