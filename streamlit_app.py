@@ -129,4 +129,38 @@ if st.button("🚀 Process Document"):
             if source_type == "URL":
                 document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {
                     "type": "image_url",
-            
+                    "image_url": input_url,
+                }
+            else:
+                file_bytes = uploaded_file.read()
+                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+
+                if file_type == "PDF":
+                    document = {"type": "document_url", "document_url": f"data:application/pdf;base64,{encoded_file}"}
+                else:
+                    img = PILImage.open(BytesIO(file_bytes))
+                    format = img.format.lower()
+                    if format not in ["jpeg", "png", "bmp", "gif"]:
+                        st.markdown("<div class='error-box'>❌ Unsupported image format.</div>", unsafe_allow_html=True)
+                        st.stop()
+                    mime_type = f"image/{format}"
+                    document = {"type": "image_url", "image_url": f"data:{mime_type};base64,{encoded_file}"}
+
+            # Perform OCR
+            with st.spinner("🔍 Processing document..."):
+                ocr_response = client.ocr.process(
+                    model="mistral-ocr-latest",
+                    document=document,
+                    include_image_base64=True,
+                )
+                pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
+                ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
+
+            # Store OCR result
+            st.session_state["ocr_result"] = ocr_result
+
+            # Display OCR Result
+            st.markdown("<div class='success-box'><h3 class='sub-header'>📃 OCR Result:</h3><pre class='text-box'>" + ocr_result + "</pre></div>", unsafe_allow_html=True)
+
+        except Exception as e:
+            st.markdown(f"<div class='error-box'>❌ Error: {str(e)}</div>", unsafe_allow_html=True)
