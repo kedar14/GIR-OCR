@@ -35,13 +35,13 @@ st.markdown("""
     }
 
     .text-box {
-        font-size: 36px !important;  /* 3x size */
+        font-size: 12px !important;  /* Font size 12 */
     }
 
     .success-box, .error-box {
         padding: 20px;
         border-radius: 10px;
-        font-size: 36px;  /* 3x size */
+        font-size: 12px;  /* Font size 12 */
     }
 
     .success-box {
@@ -125,11 +125,18 @@ if st.button("🚀 Process Document"):
         try:
             client = st.session_state["client"]
 
+            # Handle OCR for Image or PDF
+            document = {}
+            if file_type == "Image":
+                document = {"type": "image_url", "image_url": f"data:image/png;base64,{base64.b64encode(uploaded_file.read()).decode('utf-8')}"}
+            elif file_type == "PDF":
+                document = {"type": "document_url", "document_url": f"data:application/pdf;base64,{base64.b64encode(uploaded_file.read()).decode('utf-8')}"}
+
             # Perform OCR
             with st.spinner("🔍 Processing document..."):
                 ocr_response = client.ocr.process(
                     model="mistral-ocr-latest",
-                    document={"type": "image", "image_base64": base64.b64encode(uploaded_file.read()).decode("utf-8")},
+                    document=document,
                     include_image_base64=True,
                 )
                 pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
@@ -139,23 +146,3 @@ if st.button("🚀 Process Document"):
             st.markdown("<div class='success-box'><h3 class='sub-header'>📃 OCR Result:</h3><pre class='text-box'>" + ocr_result + "</pre></div>", unsafe_allow_html=True)
         except Exception as e:
             st.markdown(f"<div class='error-box'>❌ Error: {str(e)}</div>", unsafe_allow_html=True)
-
-# ---- Additional Processing ----
-if "ocr_result" in st.session_state:
-    action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
-
-    if action == "🔧 Refine Input Text" and st.button("🔧 Refine Text Now"):
-        try:
-            refined_text = "Refined OCR text output here."  # Placeholder
-            st.session_state["refined_text"] = refined_text
-            st.markdown("<div class='success-box'><h3 class='sub-header'>📑 Refined OCR Text:</h3><pre class='text-box'>" + refined_text + "</pre></div>", unsafe_allow_html=True)
-        except Exception as e:
-            st.markdown(f"<div class='error-box'>❌ Refinement error: {str(e)}</div>", unsafe_allow_html=True)
-    
-    if action == "🌎 Translate to English" and st.button("🌎 Translate Now"):
-        try:
-            translated_text = "Translated text output here."  # Placeholder
-            st.session_state["translated_text"] = translated_text
-            st.markdown("<div class='success-box'><h3 class='sub-header'>🌍 Translated Text:</h3><pre class='text-box'>" + translated_text + "</pre></div>", unsafe_allow_html=True)
-        except Exception as e:
-            st.markdown(f"<div class='error-box'>❌ Translation error: {str(e)}</div>", unsafe_allow_html=True)
