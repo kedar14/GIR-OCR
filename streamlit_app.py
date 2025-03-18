@@ -94,7 +94,13 @@ if source_type == "URL":
     uploaded_file = None
 elif source_type == "Clipboard":
     input_url = None
-    clipboard_data = st.text_area("Paste image data (Base64) or text from clipboard")
+    clipboard_data = st.text_area("Paste image or text from clipboard")
+    if clipboard_data:
+        try:
+            clipboard_bytes = base64.b64decode(clipboard_data)
+            uploaded_file = BytesIO(clipboard_bytes)
+        except Exception:
+            uploaded_file = None
     uploaded_file = None
 else:
     input_url = None
