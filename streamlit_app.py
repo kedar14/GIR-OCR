@@ -8,16 +8,38 @@ from mistralai import Mistral
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
-# ---- Custom Styles (Noto Sans + Ancient Yellow Background) ----
+# ---- Custom Styles (Noto Sans + Tibetan Light Painting Background) ----
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+    
     * { font-family: 'Noto Sans', sans-serif; }
-    .stApp { background-color: #f7b267; } /* Ancient Yellow */
-    .main { text-align: center; }
-    .big-font { font-size:20px !important; font-weight: bold; }
-    .success-box { border: 2px solid green; padding: 10px; background-color: #e6ffe6; border-radius: 5px; }
-    .error-box { border: 2px solid red; padding: 10px; background-color: #ffe6e6; border-radius: 5px; }
+    
+    .stApp { 
+        background-image: url('https://upload.wikimedia.org/wikipedia/commons/6/6e/Tibetan_Mandala.jpg'); 
+        background-size: cover; 
+        background-position: center; 
+    }
+    
+    .main-title {
+        text-align: center;
+        font-size: 60px !important; /* 3x increase */
+        font-weight: bold;
+    }
+    
+    .success-box { 
+        border: 2px solid green; 
+        padding: 10px; 
+        background-color: #e6ffe6; 
+        border-radius: 5px; 
+    }
+    
+    .error-box { 
+        border: 2px solid red; 
+        padding: 10px; 
+        background-color: #ffe6e6; 
+        border-radius: 5px; 
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -43,8 +65,7 @@ file_type = st.sidebar.radio("Select File Type", ["PDF", "Image"])
 source_type = st.sidebar.radio("Choose Input Source", ["URL", "Local Upload"])
 
 # ---- Main Header ----
-st.markdown("<h1 class='main big-font'>📄 Mistral OCR & Translation Tool</h1>", unsafe_allow_html=True)
-st.markdown("<h1 class='main big-font'>📄 Gir Reader 🦁 </h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-title'>📄 Gir Reader 🦁</h1>", unsafe_allow_html=True)
 
 # ---- OCR Input Handling ----
 if source_type == "URL":
