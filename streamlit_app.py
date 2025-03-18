@@ -115,13 +115,6 @@ else:
 
 # ---- Process Button ----
 if st.button("🚀 Process Document"):
-    if "ocr_result" in st.session_state:
-        del st.session_state["ocr_result"]
-    if "translated_text" in st.session_state:
-        del st.session_state["translated_text"]
-    if "refined_text" in st.session_state:
-        del st.session_state["refined_text"]
-    
     if not st.session_state["api_key"]:
         st.markdown("<div class='error-box'>❌ Please enter and save a valid API Key.</div>", unsafe_allow_html=True)
     elif source_type == "URL" and not input_url:
@@ -134,8 +127,14 @@ if st.button("🚀 Process Document"):
 
             # Perform OCR
             with st.spinner("🔍 Processing document..."):
-                ocr_result = "Extracted text from OCR goes here."  # Placeholder OCR processing
-
+                ocr_response = client.ocr.process(
+                    model="mistral-ocr-latest",
+                    document={"type": "image", "image_base64": base64.b64encode(uploaded_file.read()).decode("utf-8")},
+                    include_image_base64=True,
+                )
+                pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
+                ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
+            
             st.session_state["ocr_result"] = ocr_result
             st.markdown("<div class='success-box'><h3 class='sub-header'>📃 OCR Result:</h3><pre class='text-box'>" + ocr_result + "</pre></div>", unsafe_allow_html=True)
         except Exception as e:
@@ -146,9 +145,17 @@ if "ocr_result" in st.session_state:
     action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
 
     if action == "🔧 Refine Input Text" and st.button("🔧 Refine Text Now"):
-        st.session_state["refined_text"] = "Refined text output here."  # Placeholder for refined text
-        st.markdown("<div class='success-box'><h3 class='sub-header'>📑 Refined OCR Text:</h3><pre class='text-box'>" + st.session_state["refined_text"] + "</pre></div>", unsafe_allow_html=True)
+        try:
+            refined_text = "Refined OCR text output here."  # Placeholder
+            st.session_state["refined_text"] = refined_text
+            st.markdown("<div class='success-box'><h3 class='sub-header'>📑 Refined OCR Text:</h3><pre class='text-box'>" + refined_text + "</pre></div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.markdown(f"<div class='error-box'>❌ Refinement error: {str(e)}</div>", unsafe_allow_html=True)
     
     if action == "🌎 Translate to English" and st.button("🌎 Translate Now"):
-        st.session_state["translated_text"] = "Translated text output here."  # Placeholder for translation
-        st.markdown("<div class='success-box'><h3 class='sub-header'>🌍 Translated Text:</h3><pre class='text-box'>" + st.session_state["translated_text"] + "</pre></div>", unsafe_allow_html=True)
+        try:
+            translated_text = "Translated text output here."  # Placeholder
+            st.session_state["translated_text"] = translated_text
+            st.markdown("<div class='success-box'><h3 class='sub-header'>🌍 Translated Text:</h3><pre class='text-box'>" + translated_text + "</pre></div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.markdown(f"<div class='error-box'>❌ Translation error: {str(e)}</div>", unsafe_allow_html=True)
