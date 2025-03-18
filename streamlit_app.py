@@ -7,14 +7,62 @@ from mistralai import Mistral
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
-# ---- Custom Styles (Ancient Yellow Background) ----
+# ---- Custom Styles (Light & Dark Mode) ----
 st.markdown("""
     <style>
-    .stApp { background-color: #f7b267; }
-    .main { text-align: center; }
-    .big-font { font-size:20px !important; font-weight: bold; }
-    .success-box { border: 2px solid green; padding: 10px; background-color: #e6ffe6; border-radius: 5px; }
-    .error-box { border: 2px solid red; padding: 10px; background-color: #ffe6e6; border-radius: 5px; }
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+    html, body, [class*="st-"] {
+        font-family: 'Roboto', sans-serif;
+    }
+
+    .stApp {
+        background-color: var(--background-color);
+    }
+
+    .main {
+        text-align: center;
+    }
+
+    .big-font {
+        font-size: 20px !important;
+        font-weight: bold;
+    }
+
+    .success-box, .error-box {
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .success-box {
+        border: 2px solid #008000;
+        background-color: #e6ffe6;
+    }
+
+    .error-box {
+        border: 2px solid #ff0000;
+        background-color: #ffe6e6;
+    }
+
+    /* Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+        .stApp {
+            background-color: #1e1e1e;
+        }
+        .success-box {
+            border: 2px solid #00ff00;
+            background-color: #002200;
+            color: #ffffff;
+        }
+        .error-box {
+            border: 2px solid #ff5555;
+            background-color: #330000;
+            color: #ffffff;
+        }
+        .big-font {
+            color: #ffffff;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -139,18 +187,3 @@ if "ocr_result" in st.session_state:
             except Exception as e:
                 st.markdown(f"<div class='error-box'>❌ Translation error: {str(e)}</div>", unsafe_allow_html=True)
 
-# ---- Advanced Processing (Summarization) ----
-if "translated_text" in st.session_state and st.button("⚡ Advanced Process"):
-    try:
-        client = st.session_state["client"]
-        with st.spinner("🔄 Summarizing text into key points..."):
-            response = client.chat.complete(
-                model="mistral-large-latest",
-                messages=[{"role": "user", "content": f"Summarize the following translated text into 5 key bullet points:\n\n{st.session_state['translated_text']}"}],
-            )
-            summary_text = response.choices[0].message.content
-
-        st.markdown("<div class='success-box'><h3>📌 Key Takeaways:</h3><pre>" + summary_text + "</pre></div>", unsafe_allow_html=True)
-
-    except Exception as e:
-        st.markdown(f"<div class='error-box'>❌ Summary error: {str(e)}</div>", unsafe_allow_html=True)
