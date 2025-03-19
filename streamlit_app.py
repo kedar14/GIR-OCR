@@ -129,12 +129,16 @@ with st.sidebar:
                 client = Mistral(api_key=st.session_state[key_session_var])
                 st.session_state["client"] = client
                 st.success("Mistral API Client Initialized!", icon="🤖")
-            else:  # Google Cloud Vision
+            elif api_provider == "Google Cloud Vision" and google_available:  # Check for Google Cloud Vision availability
                 import json
                 credentials = json.loads(st.session_state[key_session_var])
                 client = vision.ImageAnnotatorClient.from_service_account_info(credentials)
                 st.session_state["client"] = client
                 st.success("Google Cloud Vision API Client Initialized!", icon="🤖")
+            else:
+                client = None
+                st.session_state["client"] = client
+
         except Exception as e:
             st.error(f"Error initializing API client: {e}", icon="🔥")
 
@@ -180,6 +184,9 @@ if process_button:
     else:
         try:
             client = st.session_state["client"]
+            if client is None:
+                st.error(f"❌ {api_provider} Client not initialized.  Please check your API key and library installation.", icon="🔥")
+                st.stop()
 
             with st.spinner("🔍 Processing document..."):
                 if api_provider == "Mistral":
