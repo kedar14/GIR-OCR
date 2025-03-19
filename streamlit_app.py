@@ -220,7 +220,10 @@ if process_button:
                     pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
                     ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
 
-                else:  # Google Cloud Vision
+                elif api_provider == "Google Cloud Vision":
+                    if not google_available:
+                        st.error("Google Cloud Vision is not available. Please select Mistral or install the required libraries.")
+                        st.stop()
                     # Handle Input Source
                     if source_type == "URL":
                         if file_type == "PDF":
@@ -260,6 +263,9 @@ if process_button:
                     else:
                         ocr_result = response.text_annotations[
                             0].description if response.text_annotations else "⚠️ No text found"  # Use text_annotations to get all the text
+
+                else:
+                    ocr_result = "No API provider selected."
 
             # Store OCR result
             st.session_state["ocr_result"] = ocr_result
