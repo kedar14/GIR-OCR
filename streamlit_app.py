@@ -4,6 +4,23 @@ from io import BytesIO
 from PIL import Image as PILImage
 import streamlit as st
 
+# ---- Hardcoded API Keys ----
+MISTRAL_API_KEY = "5lIwuBZtsB3WtnVe3VrkEaYQSKmKPy8i"  # 🔹 Replace with your actual Mistral API Key
+GOOGLE_CREDENTIALS_JSON = """{
+  "type": "service_account",
+  "project_id": "gen-lang-client-0796491314",
+  "private_key_id": "e9d06c2d524d323d95444baf08419f823ef52f02",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCXCznHO9vnWkQs\n5k9dEZ1mB3FSUGFgqa8Q1BaUSDGooGegzcvrGYUkGcd8cFY/Um8nzg9mCHFA8Zhv\nBwsbqEQIasYopbaJPwuGORE0ywtSrdlWyMUzB+mN249g7cCrzcVpNUsEHNIEtNEQ\n5Jp/XMRdsXX+iUpQPVqDSmpReZ2pUBc4ixqM5OM7DPUGMPH3Y0T9/8ac51nQcMEd\npFjKtsZrM7KSWYDkb1dosmX/I0zcbJS8p0XvtjhNwayLFw5Ja0tm/Qe0E4iCQ+7I\nDdfnBSoZAMhNopD047ZrBzOa7JkRCfShxMb4ys8pV5T6+0pQVm0F8rIDe0Ve4EBd\n9WD6aI7vAgMBAAECggEAIGlBQbZfjrp47KWTHCZ+fvlT4NTswGBI97R7D+CZ/1RE\nSGZAvrcgMcnyW4qDh1z6CzGVblCbdNMi4ZhCUvH9f0ziLrC4haTopSmzvn9fc6No\ngs3cOwIUpOMbVjJOaM9j8BqGeWBx1J60Sgqz+GaAoJZG+pKdRrCTrp6WR9tv8Hex\njxDlpHlSG9DGAoR0AKGFlK7RS+QH9AG/v9yuL/dad6Sh+UcKBMapUC62OC4h1oxW\nnk9W/VqHJTkVud12GnzfQZHEmp6eYc8c2qxJlTo4a2hUPKpRDm/MDYOoOVFSx6K0\nJp5u2gfh+hbqeH4SJ3ebi2lr5zSEQP6Tzj0LVvht0QKBgQDUcX5nChlIrRzW8e8I\nE2OnKmxK4uxKVc92LB4viozD+1BGOOUJYv9QgVlQGwF12j2Jz/AlKItAkbcAmist\nmnpQhtELesX2SOr2wwtRjNKZSnKDUh9G866M1gGFp9juCF/SCO0zoyvW7y/hA9PU\neTJV/VVSq0PFdD6w1eoifu9ydwKBgQC2Aw8p/iBw5tRJfWmR+6K8pEso9YmeA5nQ\nv5n3SaNwbKobQM6IqC5dP0WZok0E2fyPfbpA7nXeBGEfVfxHpRyZ12WrgEs0ZNPQ\nbiJbzPneBBRYzndxh5c8TuNjZ8okJPscCa1C5tG9aUS6VE+yd6qY/X4qV4kd/S8P\n+xOSJY4tSQKBgQDJJXytSx6NdXts+T19w/4C9WP7s8hOydjY5wTdtq15kqZ7Frul\nm5pqO065Thif4beKmNukEzNmO5GufEqNr0pInJ2p5OEzQ+9VHW/GEzQD+D1coZED\nuQ54QtjGGBqJplwznkgZMFH9/BK1Vs5myyohyO/UilxsxJfnD2PUraNCGQKBgFfO\nIgKgFgZhVQge+E70lg1rNNcNnNYd5pZN2HjzjWUvBuEe4oQKnlNdsrXrFjzA7JZM\nkQ3B/BqfAjubv5jQjnuo7eNOgPlFquliODERMXlpfmdZM0YRo2P0qr3J1DqbnIhq\nIqujrosxvXYmNkxibmpf3/2NPRi6i3mqJkba1zwBAoGARL7psJ6c4Vd+RRlBZpoi\nW8W/ZhIQWr2qcSlrbwe7Z7ymFszuSF12Z+slWrSLXVluf4ZXEF/QbDwxzavXgHDH\nEhScqKxAtgddfDb0XBcZoIrVdWvt60Fh3IXtsJjV9K3yRLM04lTIYIITjqvtNYsr\n3I44BNrlMTJ8CUYRwys/izA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "kedar-patel@gen-lang-client-0796491314.iam.gserviceaccount.com",
+  "client_id": "102456701662281837603",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/kedar-patel%40gen-lang-client-0796491314.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+"""  # 🔹 Replace with Google Cloud JSON credentials
+
 # ---- Attempt to Import Google Cloud Vision ----
 google_vision_available = True
 try:
@@ -44,26 +61,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---- Sidebar Inputs ----
-st.sidebar.header("🔑 API Configuration")
-
-# Google Vision API Key Input
-google_api_key = st.sidebar.text_area("Enter Google Vision API Key (JSON)", height=100)
-
-# Mistral API Key Storage
-if "api_key" not in st.session_state:
-    st.session_state["api_key"] = ""
-
-api_key = st.sidebar.text_input("Enter Mistral API Key", type="password", value=st.session_state["api_key"])
-
-if st.sidebar.button("💾 Save API Keys"):
-    st.session_state["api_key"] = api_key
-    st.session_state["google_api_key"] = google_api_key
-    st.success("✅ API Keys saved for this session!")
-
-# Ensure API client initialization if Mistral is available
-if mistral_available and "client" not in st.session_state and st.session_state["api_key"]:
-    st.session_state["client"] = Mistral(api_key=st.session_state["api_key"])
-
 st.sidebar.header("📁 File & Source Selection")
 file_type = st.sidebar.radio("Select File Type", ["PDF", "Image"])
 source_type = st.sidebar.radio("Choose Input Source", ["URL", "Local Upload"])
@@ -90,10 +87,10 @@ else:
 
 # ---- Process Button ----
 if st.button("🚀 Process Document"):
-    if ocr_method == "Mistral AI" and not st.session_state["api_key"]:
-        st.error("❌ Please enter and save a valid API Key for Mistral.")
-    elif ocr_method == "Google Vision Pro" and not google_api_key:
-        st.error("❌ Please enter your Google Vision API Key JSON.")
+    if not MISTRAL_API_KEY and ocr_method == "Mistral AI":
+        st.error("❌ Mistral API Key is missing. Please add it to the script.")
+    elif not GOOGLE_CREDENTIALS_JSON and ocr_method == "Google Vision Pro":
+        st.error("❌ Google Vision API Credentials are missing. Please add them to the script.")
     elif source_type == "URL" and not input_url:
         st.error("❌ Please enter a valid URL.")
     elif source_type == "Local Upload" and uploaded_file is None:
@@ -103,7 +100,7 @@ if st.button("🚀 Process Document"):
             ocr_result = "⚠️ No result found"
 
             if ocr_method == "Mistral AI":
-                client = st.session_state["client"]
+                client = Mistral(api_key=MISTRAL_API_KEY)
                 file_bytes = uploaded_file.read() if uploaded_file else None
                 encoded_file = base64.b64encode(file_bytes).decode("utf-8") if file_bytes else None
 
@@ -128,7 +125,7 @@ if st.button("🚀 Process Document"):
                     ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
 
             elif ocr_method == "Google Vision Pro":
-                credentials = service_account.Credentials.from_service_account_info(eval(google_api_key))
+                credentials = service_account.Credentials.from_service_account_info(eval(GOOGLE_CREDENTIALS_JSON))
                 vision_client = vision.ImageAnnotatorClient(credentials=credentials)
                 file_bytes = uploaded_file.read()
                 image = vision.Image(content=file_bytes)
@@ -150,44 +147,25 @@ if st.button("🚀 Process Document"):
 if "ocr_result" in st.session_state:
     action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
 
-    if action == "🔧 Refine Input Text":
-        if st.button("🔧 Refine Text Now"):
+    if action == "🔧 Refine Input Text" or action == "🌎 Translate to English":
+        if st.button("🔄 Process Now"):
             try:
-                if st.session_state["ocr_method"] == "Mistral AI":
-                    client = st.session_state["client"]
-                    with st.spinner("🛠 Refining OCR Text..."):
-                        response = client.chat.complete(
-                            model="mistral-large-latest",
-                            messages=[{"role": "user", "content": f"Improve the readability of the following text:\n\n{st.session_state['ocr_result']}"}],
-                        )
-                        refined_text = response.choices[0].message.content
-                else:
-                    refined_text = "Refinement is not available for Google Vision Pro."
+                client = Mistral(api_key=MISTRAL_API_KEY)
 
-                st.session_state["refined_text"] = refined_text
-                st.success("📑 Refined OCR Text:")
-                st.code(refined_text, language="markdown")
+                if action == "🔧 Refine Input Text":
+                    task = "Improve the readability of the following text"
+                else:
+                    task = "Translate this to English"
+
+                with st.spinner("🔄 Processing..."):
+                    response = client.chat.complete(
+                        model="mistral-large-latest",
+                        messages=[{"role": "user", "content": f"{task}:\n\n{st.session_state['ocr_result']}"}],
+                    )
+                    processed_text = response.choices[0].message.content
+
+                st.success(f"✅ {action} Result:")
+                st.code(processed_text, language="markdown")
 
             except Exception as e:
-                st.error(f"❌ Refinement error: {str(e)}")
-
-    if action == "🌎 Translate to English":
-        if st.button("🌎 Translate Now"):
-            try:
-                if st.session_state["ocr_method"] == "Mistral AI":
-                    client = st.session_state["client"]
-                    with st.spinner("🔄 Translating..."):
-                        response = client.chat.complete(
-                            model="mistral-large-latest",
-                            messages=[{"role": "user", "content": f"Translate this to English:\n\n{st.session_state['ocr_result']}"}],
-                        )
-                        translated_text = response.choices[0].message.content
-                else:
-                    translated_text = "Translation is not available for Google Vision Pro."
-
-                st.session_state["translated_text"] = translated_text
-                st.success("🌍 Translated Text:")
-                st.code(translated_text, language="markdown")
-
-            except Exception as e:
-                st.error(f"❌ Translation error: {str(e)}")
+                st.error(f"❌ Processing error: {str(e)}")
