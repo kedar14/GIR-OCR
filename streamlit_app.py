@@ -100,20 +100,22 @@ with st.sidebar:
     if api_provider == "Mistral":
         api_key_label = "Mistral API Key"
         key_session_var = "mistral_api_key"
-        creds_session_var = None # no creds needed
+        creds_session_var = None  # no creds needed
     else:  # Google Cloud Vision
         api_key_label = "GCP Credentials (JSON)"
         key_session_var = "gcp_credentials"
-        creds_session_var = "gcp_credentials" #Used to get the api client
+        creds_session_var = "gcp_credentials"  # Used to get the api client
 
-    #Persistent Storage
+    # Persistent Storage
     if key_session_var not in st.session_state:
-      st.session_state[key_session_var] = ""
+        st.session_state[key_session_var] = ""
 
     if api_provider == "Mistral":
-      api_key = st.text_input(api_key_label, type="password", value=st.session_state[key_session_var], help=f"Enter your {api_provider} API key.")
-    else: #google
-      api_key = st.text_area(api_key_label, value=st.session_state[key_session_var], help=f"Enter your {api_provider} credentials (JSON).")
+        api_key = st.text_input(api_key_label, type="password", value=st.session_state[key_session_var],
+                               help=f"Enter your {api_provider} API key.")
+    else:  # google
+        api_key = st.text_area(api_key_label, value=st.session_state[key_session_var],
+                              help=f"Enter your {api_provider} credentials (JSON).")
 
     if st.button(f"💾 Save {api_provider} Key"):
         st.session_state[key_session_var] = api_key
@@ -138,31 +140,33 @@ with st.sidebar:
 
     st.header("📁 File & Source Selection")
     file_type = st.radio("File Type", ["PDF", "Image"], help="Choose the type of file you want to process.")
-    source_type = st.radio("Input Source", ["URL", "Local Upload"], help="Select whether to upload a file or provide a URL.")
-
+    source_type = st.radio("Input Source", ["URL", "Local Upload"],
+                           help="Select whether to upload a file or provide a URL.")
 
 # ---- Main Header ----
 st.markdown("<h1 class='main-title'>📄 Gir Reader 🦁</h1>", unsafe_allow_html=True)
 
 # ---- OCR Input Handling ----
 if source_type == "URL":
-    input_url = st.text_input("File URL", placeholder="Enter URL here...", help="Enter the URL of the PDF or image file.")
+    input_url = st.text_input("File URL", placeholder="Enter URL here...",
+                             help="Enter the URL of the PDF or image file.")
     uploaded_file = None
 else:
     input_url = None
-    uploaded_file = st.file_uploader("Upload File", type=["png", "jpg", "jpeg", "gif", "bmp", "pdf"], help="Upload a PDF or image file from your computer.")
+    uploaded_file = st.file_uploader("Upload File", type=["png", "jpg", "jpeg", "gif", "bmp", "pdf"],
+                                     help="Upload a PDF or image file from your computer.")
 
 # ---- Process Button ----
 # Disable the button based on API provider, API key, and file/URL input
 process_button = st.button(
     "🚀 Process Document",
     disabled=not (
-        st.session_state.get(key_session_var)
-        and (input_url or uploaded_file)
-        and (
-            (api_provider == "Mistral" and mistral_available)
-            or (api_provider == "Google Cloud Vision" and google_available)
-        )
+            st.session_state.get(key_session_var)
+            and (input_url or uploaded_file)
+            and (
+                    (api_provider == "Mistral" and mistral_available)
+                    or (api_provider == "Google Cloud Vision" and google_available)
+            )
     ),
 )
 
@@ -179,119 +183,18 @@ if process_button:
 
             with st.spinner("🔍 Processing document..."):
                 if api_provider == "Mistral":
-                  if source_type == "URL":
-                      document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {
-                          "type": "image_url",
-                          "image_url": input_url,
-                      }
-                  else:
-                      file_bytes = uploaded_file.read()
-                      encoded_file = base64.b64encode(file_bytes).decode("utf-8")
-
-                      if file_type == "PDF":
-                          document = {"type": "document_file", "file_content": encoded_file}
-                      else:
-                          img = PILImage.open(BytesIO(file_bytes))
-                          format = img.format.lower()
-                          if format not in ["jpeg", "png", "bmp", "gif"]:
-                              st.error("❌ Unsupported image format. Please use PNG, JPEG, BMP, or GIF.", icon="🖼️")
-                              st.stop()
-                          mime_type = f"image/{format}"
-                          document = {"type": "image_url", "image_url": f"data:{mime_type};base64,{encoded_file}"}
-
-                  # Perform OCR
-                  include_base64 = file_type != "PDF"
-                  ocr_response = client.ocr.process(
-                      model="mistral-ocr-latest",
-                      document=document,
-                      include_image_base64=include_base64,
-                  )
-                  pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
-                  ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
-
-                else:  # Google Cloud Vision
-                    # Handle Input Source
                     if source_type == "URL":
-                        if file_type == "PDF":
-                            st.error("❌ URL input for PDFs is not directly supported. Please upload the PDF.", icon="⚠️")
-                            st.stop()
-
-                        image = vision.Image()
-                        image.source.image_uri = input_url
-
+                        document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {
+                            "type": "image_url",
+                            "image_url": input_url,
+                        }
                     else:
                         file_bytes = uploaded_file.read()
+                        encoded_file = base64.b64encode(file_bytes).decode("utf-8")
 
                         if file_type == "PDF":
-                            # Google Cloud Vision API PDF processing (needs enterprise features enabled)
-                            image = vision.Image(content=file_bytes)
-
-                        else:  # Image
-                            image = vision.Image(content=file_bytes)
-
-                    # Perform OCR
-                    if file_type == "PDF":
-                        # Feature detection for PDFs (enterprise feature)
-                        feature = vision.Feature(
-                            type_=vision.Feature.Type.DOCUMENT_TEXT_DETECTION
-                        )
-                    else:
-                        feature = vision.Feature(
-                            type_=vision.Feature.Type.TEXT_DETECTION  # Detect text
-                        )
-                    request = vision.AnnotateImageRequest(image=image, features=[feature])
-                    response = client.annotate_image(request=request)  # Make the API request
-
-                    if file_type == "PDF":
-                        ocr_result = response.full_text_annotation.text if response.full_text_annotation else "⚠️ No text found"  # Use full_text_annotation to get all the text
-                    else:
-                        ocr_result = response.text_annotations[0].description if response.text_annotations else "⚠️ No text found"  # Use text_annotations to get all the text
-
-            # Store OCR result
-            st.session_state["ocr_result"] = ocr_result
-
-            # Display OCR Result
-            st.success("📃 OCR Result:", icon="✅")
-            st.code(ocr_result, language="markdown")
-
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}", icon="🔥")
-
-# ---- Options After OCR ----
-if "ocr_result" in st.session_state:
-    action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
-
-    if action == "🔧 Refine Input Text":
-        if st.button("🔧 Refine Text Now"):
-            try:
-                # Placeholder refinement. Needs actual refinement code (LLM).
-                refined_text = st.session_state['ocr_result']
-                st.session_state["refined_text"] = refined_text
-                st.success("📑 Refined OCR Text:", icon="✅")
-                st.code(refined_text, language="markdown")
-
-            except Exception as e:
-                st.error(f"❌ Refinement error: {str(e)}", icon="🔥")
-
-    if action == "🌎 Translate to English":
-        if st.button("🌎 Translate Now"):
-            try:
-                # Placeholder translation. Needs actual translation code (Translation API or LLM).
-                translated_text = st.session_state['ocr_result']
-                st.session_state["translated_text"] = translated_text
-                st.success("🌍 Translated Text:", icon="✅")
-                st.code(translated_text, language="markdown")
-
-            except Exception as e:
-                st.error(f"❌ Translation error: {str(e)}", icon="🔥")
-
-# ---- Advanced Process (Summarize in 5 Points) ----
-if "translated_text" in st.session_state and st.button("⚡ Advanced Process"):
-    try:
-        # Placeholder summarization. Needs actual summarization code (LLM).
-        summary_text = "Summary Placeholder"
-        st.success("📌 Key Takeaways:", icon="✅")
-        st.code(summary_text, language="markdown")
-
-    except Exception as e:
-        st.error(f"❌ Summary error: {str(e)}", icon="🔥")
+                            document = {"type": "document_file", "file_content": encoded_file}
+                        else:
+                            img = PILImage.open(BytesIO(file_bytes))
+                            format = img.format.lower()
+                            if format not in ["jpeg", "png", "bmp
