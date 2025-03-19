@@ -36,8 +36,6 @@ GOOGLE_CREDENTIALS_JSON = """{
   "universe_domain": "googleapis.com"
 }"""  # 🔹 Ensure JSON is inside triple quotes
 
-"  # 🔹 Replace with actual JSON credentials
-
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
