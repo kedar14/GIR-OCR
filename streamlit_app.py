@@ -19,15 +19,8 @@ except ImportError:
     Mistral = None
 
 # ---- Hardcoded API Keys ----
-MISTRAL_API_KEY = "5lIwuBZtsB3WtnVe3VrkEaYQSKmKPy8i"  # 🔹 Replace with your actual Mistral API Key
-GOOGLE_CREDENTIALS_JSON = """{
-  "type": "service_account",
-  "project_id": "gen-lang-client-0796491314",
-  "private_key_id": "e9d06c2d524d323d95444baf08419f823ef52f02",
-  "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADAN...",
-  "client_email": "kedar-patel@gen-lang-client-0796491314.iam.gserviceaccount.com",
-  "token_uri": "https://oauth2.googleapis.com/token"
-}"""  # 🔹 Replace with full JSON credentials
+MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY"  # 🔹 Replace with your actual Mistral API Key
+GOOGLE_CREDENTIALS_JSON = "YOUR_GOOGLE_CREDENTIALS_JSON"  # 🔹 Replace with actual JSON credentials
 
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
@@ -88,21 +81,34 @@ if st.button("🚀 Process Document"):
         try:
             ocr_result = "⚠️ No result found"
 
+            # ---- Handle Local Uploads Properly ----
+            file_bytes = None
+            encoded_file = None
+
+            if uploaded_file:
+                file_bytes = uploaded_file.read()
+                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+
+            # ---- Process OCR ----
             if ocr_method == "Mistral AI" and Mistral:
                 client = Mistral(api_key=MISTRAL_API_KEY)
-                file_bytes = uploaded_file.read() if uploaded_file else None
-                encoded_file = base64.b64encode(file_bytes).decode("utf-8") if file_bytes else None
 
-                document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {
-                    "type": "image_url",
-                    "image_url": input_url,
-                } if source_type == "URL" else {
-                    "type": "document_file",
-                    "file_content": encoded_file
-                } if file_type == "PDF" else {
-                    "type": "image_url",
-                    "image_url": f"data:image/{PILImage.open(BytesIO(file_bytes)).format.lower()};base64,{encoded_file}"
-                }
+                if file_type == "PDF":
+                    document = {
+                        "type": "document_file",
+                        "file_content": encoded_file
+                    }
+                elif source_type == "URL":
+                    document = {
+                        "type": "image_url",
+                        "image_url": input_url,
+                    }
+                else:  # Local Image Upload
+                    image_format = uploaded_file.type.split("/")[-1]  # Extract format
+                    document = {
+                        "type": "image_url",
+                        "image_url": f"data:image/{image_format};base64,{encoded_file}"
+                    }
 
                 with st.spinner("🔍 Processing document..."):
                     ocr_response = client.ocr.process(
@@ -116,8 +122,8 @@ if st.button("🚀 Process Document"):
             elif ocr_method == "Google Vision Pro" and vision:
                 credentials = service_account.Credentials.from_service_account_info(eval(GOOGLE_CREDENTIALS_JSON))
                 vision_client = vision.ImageAnnotatorClient(credentials=credentials)
-                file_bytes = uploaded_file.read()
-                image = vision.Image(content=file_bytes)
+
+                image = vision.Image(content=file_bytes)  # Properly use file_bytes
 
                 with st.spinner("🔍 Processing document with Google Vision..."):
                     response = vision_client.text_detection(image=image)
@@ -135,7 +141,7 @@ if st.button("🚀 Process Document"):
 if "ocr_result" in st.session_state:
     action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
 
-    if action == "🔧 Refine Input Text" or action == "🌎 Translate to English":
+    if action in ["🔧 Refine Input Text", "🌎 Translate to English"]:
         if st.button("🔄 Process Now"):
             try:
                 client = Mistral(api_key=MISTRAL_API_KEY)
