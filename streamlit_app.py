@@ -41,7 +41,7 @@ st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
 # ---- Custom Styles (Noto Sans + Tibetan Light Painting Background) ----
 st.markdown("""
-    <style>
+  <style>
     .stApp { 
         background-color: white; /* Sets a clean white background */
     }
