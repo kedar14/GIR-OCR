@@ -130,11 +130,18 @@ with st.sidebar:
                 st.session_state["client"] = client
                 st.success("Mistral API Client Initialized!", icon="🤖")
             elif api_provider == "Google Cloud Vision" and google_available:  # Check for Google Cloud Vision availability
-                import json
-                credentials = json.loads(st.session_state[key_session_var])
-                client = vision.ImageAnnotatorClient.from_service_account_info(credentials)
-                st.session_state["client"] = client
-                st.success("Google Cloud Vision API Client Initialized!", icon="🤖")
+                try:  # Added try-except block for loading credentials
+                    import json
+                    credentials = json.loads(st.session_state[key_session_var])
+                    client = vision.ImageAnnotatorClient.from_service_account_info(credentials)
+                    st.session_state["client"] = client
+                    st.success("Google Cloud Vision API Client Initialized!", icon="🤖")
+                except json.JSONDecodeError:
+                    st.error("Invalid GCP Credentials JSON. Please ensure the JSON is valid.", icon="🔥")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error initializing Google Cloud Vision client: {e}", icon="🔥")
+                    st.stop()
             else:
                 client = None
                 st.session_state["client"] = client
@@ -237,13 +244,7 @@ if process_button:
 
                     else:
                         file_bytes = uploaded_file.read()
-
-                        if file_type == "PDF":
-                            # Google Cloud Vision API PDF processing (needs enterprise features enabled)
-                            image = vision.Image(content=file_bytes)
-
-                        else:  # Image
-                            image = vision.Image(content=file_bytes)
+                        image = vision.Image(content=file_bytes)
 
                     # Perform OCR
                     if file_type == "PDF":
@@ -256,7 +257,11 @@ if process_button:
                             type_=vision.Feature.Type.TEXT_DETECTION  # Detect text
                         )
                     request = vision.AnnotateImageRequest(image=image, features=[feature])
-                    response = client.annotate_image(request=request)  # Make the API request
+                    try:
+                        response = client.annotate_image(request=request)  # Make the API request
+                    except Exception as e:
+                        st.error(f"Error during Google Cloud Vision API call: {e}", icon="🔥")
+                        st.stop()
 
                     if file_type == "PDF":
                         ocr_result = response.full_text_annotation.text if response.full_text_annotation else "⚠️ No text found"  # Use full_text_annotation to get all the text
