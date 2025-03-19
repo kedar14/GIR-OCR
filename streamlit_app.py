@@ -1,37 +1,27 @@
-import os
-import json
 import base64
 import re
 from io import BytesIO
 from PIL import Image as PILImage
 import streamlit as st
 
-# ---- Securely Load API Keys from Environment Variables ----
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+# ---- Hardcoded API Keys ----
+MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY"  # 🔹 Replace with your actual Mistral API Key
+GOOGLE_CREDENTIALS_JSON = """YOUR_GOOGLE_CREDENTIALS_JSON"""  # 🔹 Replace with Google Cloud JSON credentials
 
-# ---- Initialize Google Cloud Vision Client ----
-google_vision_available = False
-if GOOGLE_CREDENTIALS_JSON:
-    try:
-        from google.oauth2 import service_account
-        from google.cloud import vision
-        
-        credentials = service_account.Credentials.from_service_account_info(json.loads(GOOGLE_CREDENTIALS_JSON))
-        vision_client = vision.ImageAnnotatorClient(credentials=credentials)
-        google_vision_available = True
-    except Exception as e:
-        st.error(f"❌ Google Vision initialization failed: {e}")
+# ---- Attempt to Import Google Cloud Vision ----
+google_vision_available = True
+try:
+    from google.cloud import vision
+    from google.oauth2 import service_account
+except ImportError:
+    google_vision_available = False
 
-# ---- Initialize Mistral AI Client ----
-mistral_available = False
-if MISTRAL_API_KEY:
-    try:
-        from mistralai import Mistral
-        mistral_client = Mistral(api_key=MISTRAL_API_KEY)
-        mistral_available = True
-    except Exception as e:
-        st.error(f"❌ Mistral AI initialization failed: {e}")
+# ---- Attempt to Import Mistral API ----
+mistral_available = True
+try:
+    from mistralai import Mistral
+except ImportError:
+    mistral_available = False
 
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
@@ -84,10 +74,10 @@ else:
 
 # ---- Process Button ----
 if st.button("🚀 Process Document"):
-    if not mistral_available and ocr_method == "Mistral AI":
-        st.error("❌ Mistral API Key is missing. Set it in environment variables.")
-    elif not google_vision_available and ocr_method == "Google Vision Pro":
-        st.error("❌ Google Vision API Credentials are missing. Set it in environment variables.")
+    if not MISTRAL_API_KEY and ocr_method == "Mistral AI":
+        st.error("❌ Mistral API Key is missing. Please add it to the script.")
+    elif not GOOGLE_CREDENTIALS_JSON and ocr_method == "Google Vision Pro":
+        st.error("❌ Google Vision API Credentials are missing. Please add them to the script.")
     elif source_type == "URL" and not input_url:
         st.error("❌ Please enter a valid URL.")
     elif source_type == "Local Upload" and uploaded_file is None:
@@ -97,6 +87,7 @@ if st.button("🚀 Process Document"):
             ocr_result = "⚠️ No result found"
 
             if ocr_method == "Mistral AI":
+                client = Mistral(api_key=MISTRAL_API_KEY)
                 file_bytes = uploaded_file.read() if uploaded_file else None
                 encoded_file = base64.b64encode(file_bytes).decode("utf-8") if file_bytes else None
 
@@ -112,7 +103,7 @@ if st.button("🚀 Process Document"):
                 }
 
                 with st.spinner("🔍 Processing document..."):
-                    ocr_response = mistral_client.ocr.process(
+                    ocr_response = client.ocr.process(
                         model="mistral-ocr-latest",
                         document=document,
                         include_image_base64=(file_type != "PDF"),
@@ -121,6 +112,8 @@ if st.button("🚀 Process Document"):
                     ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
 
             elif ocr_method == "Google Vision Pro":
+                credentials = service_account.Credentials.from_service_account_info(eval(GOOGLE_CREDENTIALS_JSON))
+                vision_client = vision.ImageAnnotatorClient(credentials=credentials)
                 file_bytes = uploaded_file.read()
                 image = vision.Image(content=file_bytes)
 
@@ -144,9 +137,7 @@ if "ocr_result" in st.session_state:
     if action == "🔧 Refine Input Text" or action == "🌎 Translate to English":
         if st.button("🔄 Process Now"):
             try:
-                if not mistral_available:
-                    st.error("❌ Mistral AI is required for refinement & translation.")
-                    st.stop()
+                client = Mistral(api_key=MISTRAL_API_KEY)
 
                 if action == "🔧 Refine Input Text":
                     task = "Improve the readability of the following text"
@@ -154,7 +145,7 @@ if "ocr_result" in st.session_state:
                     task = "Translate this to English"
 
                 with st.spinner("🔄 Processing..."):
-                    response = mistral_client.chat.complete(
+                    response = client.chat.complete(
                         model="mistral-large-latest",
                         messages=[{"role": "user", "content": f"{task}:\n\n{st.session_state['ocr_result']}"}],
                     )
