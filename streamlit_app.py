@@ -137,7 +137,13 @@ if st.button("🚀 Process Document"):
                 credentials = service_account.Credentials.from_service_account_info(eval(GOOGLE_CREDENTIALS_JSON))
                 vision_client = vision.ImageAnnotatorClient(credentials=credentials)
 
-                image = vision.Image(content=file_bytes)  # Properly use file_bytes
+                if source_type == "Local Upload" and file_bytes:
+                    image = vision.Image(content=file_bytes)  # Use file_bytes correctly
+                elif source_type == "URL" and input_url:
+                    image = vision.Image(source=vision.ImageSource(image_uri=input_url))  # Handle URLs correctly
+                else:
+                    st.error("❌ Invalid input for Google Vision OCR.")
+                    st.stop()
 
                 with st.spinner("🔍 Processing document with Google Vision..."):
                     response = vision_client.text_detection(image=image)
