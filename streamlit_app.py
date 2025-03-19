@@ -42,16 +42,11 @@ st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 # ---- Custom Styles (Noto Sans + Tibetan Light Painting Background) ----
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
-
-    * { font-family: 'Noto Sans', sans-serif; }
-
     .stApp { 
-        background-image: url('https://upload.wikimedia.org/wikipedia/commons/6/6e/Tibetan_Mandala.jpg'); 
-        background-size: cover; 
-        background-position: center; 
+        background-color: white; /* Sets a clean white background */
     }
-
+    </style>
+""", unsafe_allow_html=True)
     .main-title {
         text-align: center;
         font-size: 60px !important;  /* Ensures large title */
