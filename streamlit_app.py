@@ -1,290 +1,183 @@
 import base64
+import re
 from io import BytesIO
 from PIL import Image as PILImage
 import streamlit as st
 
-# ---- Conditional Imports ----
-try:
-    from mistralai import Mistral
-    mistral_available = True
-except ImportError:
-    mistral_available = False
-
+# Try importing Google Cloud Vision and handle ImportError
 try:
     from google.cloud import vision
-    google_available = True
 except ImportError:
-    google_available = False
+    st.error("❌ Google Cloud Vision library is missing. Please restart Replit or run `pip install -r requirements.txt`.")
+    st.stop()
+
+# Try importing Mistral API and handle ImportError
+try:
+    from mistralai import Mistral
+except ImportError:
+    st.error("❌ Mistral API library is missing. Please restart Replit or run `pip install -r requirements.txt`.")
+    st.stop()
 
 # ---- Web App Configuration ----
 st.set_page_config(page_title="Gir Reader", page_icon="📄", layout="centered")
 
-# ---- Custom Styles ----
+# ---- Custom Styles (Noto Sans + Tibetan Light Painting Background) ----
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+    
     * { font-family: 'Noto Sans', sans-serif; }
-    .stApp {
-        background: linear-gradient(to bottom, #f0f2f6, #fff);
+    
+    .stApp { 
+        background-image: url('https://upload.wikimedia.org/wikipedia/commons/6/6e/Tibetan_Mandala.jpg'); 
+        background-size: cover; 
+        background-position: center; 
     }
+    
     .main-title {
         text-align: center;
-        font-size: 48px !important;
+        font-size: 60px !important; /* 3x increase */
         font-weight: bold;
-        color: #333;
     }
-    .sidebar .stRadio > label {
-        font-size: 16px;
+    
+    .success-box { 
+        border: 2px solid green; 
+        padding: 10px; 
+        background-color: #e6ffe6; 
+        border-radius: 5px; 
     }
-    .success-box {
-        border: 1px solid #4CAF50;
-        padding: 10px;
-        background-color: #d4edda;
-        border-radius: 5px;
-        color: #2B3641;
-    }
-    .error-box {
-        border: 1px solid #f44336;
-        padding: 10px;
-        background-color: #f8d7da;
-        border-radius: 5px;
-        color: #2B3641;
-    }
-    .stButton > button {
-        background-color: #4CAF50;
-        color: white;
-        padding: 14px 20px;
-        margin: 8px 0;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 16px;
-    }
-    .stButton > button:hover {
-        background-color: #3e8e41;
-    }
-    .stCodeBlock {
-        background-color: #f5f5f5;
-        border: 1px solid #ccc;
-        padding: 10px;
-        border-radius: 5px;
+    
+    .error-box { 
+        border: 2px solid red; 
+        padding: 10px; 
+        background-color: #ffe6e6; 
+        border-radius: 5px; 
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ---- Sidebar Inputs ----
-with st.sidebar:
-    st.header("⚙️ API Configuration")
+st.sidebar.header("🔑 API Configuration")
 
-    api_provider = st.radio(
-        "Select API Provider",
-        ["Mistral", "Google Cloud Vision"],
-        disabled=not (mistral_available or google_available),
-        help="Choose the OCR API you want to use. Requires API key and installation of necessary libraries.",
-    )
+# Persistent API Key Storage
+if "api_key" not in st.session_state:
+    st.session_state["api_key"] = ""
 
-    if not mistral_available and api_provider == "Mistral":
-        st.warning("MistralAI library not installed. Please install it to use Mistral.", icon="⚠️")
-    if not google_available and api_provider == "Google Cloud Vision":
-        st.warning("Google Cloud Vision library not installed. Please install it to use Google.", icon="⚠️")
+api_key = st.sidebar.text_input("Enter Mistral API Key", type="password", value=st.session_state["api_key"])
 
-    if api_provider == "Mistral":
-        api_key_label = "Mistral API Key"
-        key_session_var = "mistral_api_key"
-    else:  # Google Cloud Vision
-        api_key_label = "GCP Credentials (JSON)"
-        key_session_var = "gcp_credentials"
+if st.sidebar.button("💾 Save API Key"):
+    st.session_state["api_key"] = api_key
+    st.success("✅ API Key saved for this session!")
 
-    # Persistent Storage for API Key/Credentials
-    if key_session_var not in st.session_state:
-        st.session_state[key_session_var] = ""
+# Ensure API client initialization
+if "client" not in st.session_state and st.session_state["api_key"]:
+    st.session_state["client"] = Mistral(api_key=st.session_state["api_key"])
 
-    if api_provider == "Mistral":
-        api_key = st.text_input(api_key_label, type="password", value=st.session_state[key_session_var],
-                                help=f"Enter your {api_provider} API key.")
-    else:
-        api_key = st.text_area(api_key_label, value=st.session_state[key_session_var],
-                               help=f"Enter your {api_provider} credentials (JSON).")
-
-    if st.button(f"💾 Save {api_provider} Key"):
-        st.session_state[key_session_var] = api_key
-        st.success(f"✅ {api_provider} Key saved for this session!", icon="✅")
-
-    # ---- API Client Initialization ----
-    client_session_var = "client"
-    if client_session_var not in st.session_state and st.session_state[key_session_var]:
-        try:
-            if api_provider == "Mistral":
-                client = Mistral(api_key=st.session_state[key_session_var])
-                st.session_state["client"] = client
-                st.success("Mistral API Client Initialized!", icon="🤖")
-            elif api_provider == "Google Cloud Vision" and google_available:
-                try:
-                    import json
-                    credentials = json.loads(st.session_state[key_session_var])
-                    client = vision.ImageAnnotatorClient.from_service_account_info(credentials)
-                    st.session_state["client"] = client
-                    st.success("Google Cloud Vision API Client Initialized!", icon="🤖")
-                except json.JSONDecodeError:
-                    st.error("Invalid GCP Credentials JSON. Please ensure the JSON is valid.", icon="🔥")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error initializing Google Cloud Vision client: {e}", icon="🔥")
-                    st.stop()
-            else:
-                client = None
-                st.session_state["client"] = client
-        except Exception as e:
-            st.error(f"Error initializing API client: {e}", icon="🔥")
-
-    st.header("📁 File & Source Selection")
-    file_type = st.radio("File Type", ["PDF", "Image"], help="Choose the type of file you want to process.")
-    source_type = st.radio("Input Source", ["URL", "Local Upload"],
-                           help="Select whether to upload a file or provide a URL.")
+st.sidebar.header("📁 File & Source Selection")
+file_type = st.sidebar.radio("Select File Type", ["PDF", "Image"])
+source_type = st.sidebar.radio("Choose Input Source", ["URL", "Local Upload"])
 
 # ---- Main Header ----
 st.markdown("<h1 class='main-title'>📄 Gir Reader 🦁</h1>", unsafe_allow_html=True)
 
 # ---- OCR Input Handling ----
 if source_type == "URL":
-    input_url = st.text_input("File URL", placeholder="Enter URL here...",
-                              help="Enter the URL of the PDF or image file.")
+    input_url = st.text_input("Enter File URL")
     uploaded_file = None
 else:
     input_url = None
-    uploaded_file = st.file_uploader("Upload File", type=["png", "jpg", "jpeg", "gif", "bmp", "pdf"],
-                                     help="Upload a PDF or image file from your computer.")
+    uploaded_file = st.file_uploader("Upload File", type=["png", "jpg", "jpeg", "gif", "bmp", "pdf"])
 
 # ---- Process Button ----
-process_button = st.button(
-    "🚀 Process Document",
-    disabled=not (
-        st.session_state.get(key_session_var)
-        and (input_url or uploaded_file)
-        and (
-            (api_provider == "Mistral" and mistral_available)
-            or (api_provider == "Google Cloud Vision" and google_available)
-        )
-    ),
-)
-
-if process_button:
-    if not st.session_state[key_session_var]:
-        st.error(f"❌ Please enter and save your {api_provider} API Key/Credentials.", icon="🔑")
+if st.button("🚀 Process Document"):
+    if not st.session_state["api_key"]:
+        st.error("❌ Please enter and save a valid API Key.")
     elif source_type == "URL" and not input_url:
-        st.error("❌ Please enter a valid URL.", icon="🔗")
+        st.error("❌ Please enter a valid URL.")
     elif source_type == "Local Upload" and uploaded_file is None:
-        st.error("❌ Please upload a valid file.", icon="📁")
+        st.error("❌ Please upload a valid file.")
     else:
         try:
             client = st.session_state["client"]
-            if client is None:
-                st.error(f"❌ {api_provider} Client not initialized. Please check your API key and library installation.", icon="🔥")
-                st.stop()
 
-            with st.spinner("🔍 Processing document..."):
-                if api_provider == "Mistral":
-                    # Prepare document for Mistral OCR
-                    if source_type == "URL":
-                        if file_type == "PDF":
-                            document = {"type": "document_url", "document_url": input_url}
-                        else:
-                            document = {"type": "image_url", "image_url": input_url}
-                    else:
-                        file_bytes = uploaded_file.read()
-                        encoded_file = base64.b64encode(file_bytes).decode("utf-8")
-                        if file_type == "PDF":
-                            document = {"type": "document_file", "file_content": encoded_file}
-                        else:
-                            # Rename variable to avoid shadowing built-in 'format'
-                            img = PILImage.open(BytesIO(file_bytes))
-                            img_format = img.format.lower()
-                            if img_format not in ["jpeg", "png", "bmp", "gif"]:
-                                st.error("❌ Unsupported image format. Please use PNG, JPEG, BMP, or GIF.", icon="🖼️")
-                                st.stop()
-                            mime_type = f"image/{img_format}"
-                            document = {"type": "image_url", "image_url": f"data:{mime_type};base64,{encoded_file}"}
+            # Handle Input Source
+            if source_type == "URL":
+                document = {"type": "document_url", "document_url": input_url} if file_type == "PDF" else {
+                    "type": "image_url",
+                    "image_url": input_url,
+                }
+            else:
+                file_bytes = uploaded_file.read()
+                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
 
-                    include_base64 = file_type != "PDF"
-                    ocr_response = client.ocr.process(
-                        model="mistral-ocr-latest",
-                        document=document,
-                        include_image_base64=include_base64,
-                    )
-                    pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
-                    ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
-
-                elif api_provider == "Google Cloud Vision":
-                    # Prepare document for Google Cloud Vision OCR
-                    if source_type == "URL":
-                        if file_type == "PDF":
-                            st.error("❌ URL input for PDFs is not directly supported. Please upload the PDF.", icon="⚠️")
-                            st.stop()
-                        image = vision.Image()
-                        image.source.image_uri = input_url
-                    else:
-                        file_bytes = uploaded_file.read()
-                        image = vision.Image(content=file_bytes)
-
-                    if file_type == "PDF":
-                        feature = vision.Feature(type_=vision.Feature.Type.DOCUMENT_TEXT_DETECTION)
-                    else:
-                        feature = vision.Feature(type_=vision.Feature.Type.TEXT_DETECTION)
-                    request = vision.AnnotateImageRequest(image=image, features=[feature])
-                    try:
-                        response = client.annotate_image(request=request)
-                    except Exception as e:
-                        st.error(f"Error during Google Cloud Vision API call: {e}", icon="🔥")
-                        st.stop()
-
-                    if file_type == "PDF":
-                        ocr_result = response.full_text_annotation.text if response.full_text_annotation else "⚠️ No text found"
-                    else:
-                        ocr_result = response.text_annotations[0].description if response.text_annotations else "⚠️ No text found"
+                if file_type == "PDF":
+                    document = {"type": "document_file", "file_content": encoded_file}
                 else:
-                    ocr_result = "No API provider selected."
+                    img = PILImage.open(BytesIO(file_bytes))
+                    format = img.format.lower()
+                    if format not in ["jpeg", "png", "bmp", "gif"]:
+                        st.error("❌ Unsupported image format. Please use PNG, JPEG, BMP, or GIF.")
+                        st.stop()
+                    mime_type = f"image/{format}"
+                    document = {"type": "image_url", "image_url": f"data:{mime_type};base64,{encoded_file}"}
 
-            # Store and display OCR result
+            # Perform OCR
+            with st.spinner("🔍 Processing document..."):
+                include_base64 = file_type != "PDF"
+                ocr_response = client.ocr.process(
+                    model="mistral-ocr-latest",
+                    document=document,
+                    include_image_base64=include_base64,
+                )
+                pages = ocr_response.pages if hasattr(ocr_response, "pages") else []
+                ocr_result = "\n\n".join(page.markdown for page in pages) or "⚠️ No result found"
+
+            # Store OCR result
             st.session_state["ocr_result"] = ocr_result
-            st.success("📃 OCR Result:", icon="✅")
+
+            # Display OCR Result
+            st.success("📃 OCR Result:")
             st.code(ocr_result, language="markdown")
 
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}", icon="🔥")
+            st.error(f"❌ Error: {str(e)}")
 
 # ---- Options After OCR ----
 if "ocr_result" in st.session_state:
-    action = st.radio("What would you like to do next?",
-                      ["🔧 Refine Input Text", "🌎 Translate to English"])
+    action = st.radio("What would you like to do next?", ["🔧 Refine Input Text", "🌎 Translate to English"])
 
     if action == "🔧 Refine Input Text":
         if st.button("🔧 Refine Text Now"):
             try:
-                # Placeholder for text refinement logic (e.g., via an LLM)
-                refined_text = st.session_state["ocr_result"]
+                client = st.session_state["client"]
+                with st.spinner("🛠 Refining OCR Text..."):
+                    response = client.chat.complete(
+                        model="mistral-large-latest",
+                        messages=[{"role": "user", "content": f"Improve the structure and readability of the following text:\n\n{st.session_state['ocr_result']}"}],
+                    )
+                    refined_text = response.choices[0].message.content
+
                 st.session_state["refined_text"] = refined_text
-                st.success("📑 Refined OCR Text:", icon="✅")
+                st.success("📑 Refined OCR Text:")
                 st.code(refined_text, language="markdown")
+
             except Exception as e:
-                st.error(f"❌ Refinement error: {str(e)}", icon="🔥")
+                st.error(f"❌ Refinement error: {str(e)}")
 
     if action == "🌎 Translate to English":
         if st.button("🌎 Translate Now"):
             try:
-                # Placeholder for translation logic (e.g., via an API or LLM)
-                translated_text = st.session_state["ocr_result"]
-                st.session_state["translated_text"] = translated_text
-                st.success("🌍 Translated Text:", icon="✅")
-                st.code(translated_text, language="markdown")
-            except Exception as e:
-                st.error(f"❌ Translation error: {str(e)}", icon="🔥")
+                client = st.session_state["client"]
+                with st.spinner("🔄 Translating..."):
+                    response = client.chat.complete(
+                        model="mistral-large-latest",
+                        messages=[{"role": "user", "content": f"Translate the following text to English:\n\n{st.session_state['ocr_result']}"}],
+                    )
+                    translated_text = response.choices[0].message.content
 
-# ---- Advanced Process (Summarize in 5 Points) ----
-if "translated_text" in st.session_state and st.button("⚡ Advanced Process"):
-    try:
-        # Placeholder for summarization logic (e.g., via an LLM)
-        summary_text = "Summary Placeholder"
-        st.success("📌 Key Takeaways:", icon="✅")
-        st.code(summary_text, language="markdown")
-    except Exception as e:
-        st.error(f"❌ Summary error: {str(e)}", icon="🔥")
+                st.session_state["translated_text"] = translated_text
+                st.success("🌍 Translated Text:")
+                st.code(translated_text, language="markdown")
+
+            except Exception as e:
+                st.error(f"❌ Translation error: {str(e)}")
